@@ -44,10 +44,30 @@ class MainActivity : AppCompatActivity() {
             val longitude = myLastLocation.longitude
             Log.i("Current Latitude: ", latitude.toString())
             Log.i("Current Longitude: ", longitude.toString())
+
+            getLocationWeatherDetails()
         }
     }
 
-    /** This function is to request permissions from the user to allow location services that needs to be provided to the application itself */
+    /** This function returns the weather details on user's current location */
+    private fun getLocationWeatherDetails() {
+        if (Constants.isNetworkAvailable(this)) {
+            Toast.makeText(
+                this@MainActivity,
+                "You have connected to the internet.",
+                Toast.LENGTH_SHORT
+            ).show()
+        } else {
+            Toast.makeText(
+                this@MainActivity,
+                "You are not connected to the internet.",
+                Toast.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    /** This function is to request permissions from the user to allow
+     * location services that needs to be provided to the application itself */
     private fun requestPermission() {
         /** Check location service access is granted or not */
         if (!isLocationEnabled()) {
@@ -67,7 +87,8 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_COARSE_LOCATION
             ).withListener(object : MultiplePermissionsListener {
                 override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
-                    /** If all the permissions are granted, call the requestLocationData function to gather the longitude and latitude */
+                    /** If all the permissions are granted, call the requestLocationData function
+                     * to gather the longitude and latitude */
                     if (report!!.areAllPermissionsGranted()) {
                         requestLocationData()
                     }
@@ -81,7 +102,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
 
-                /** If permissions are not granted than call the showRationalDialogForPermission to direct application settings */
+                /** If permissions are not granted than call the
+                 * showRationalDialogForPermission to direct application settings */
                 override fun onPermissionRationaleShouldBeShown(
                     permissions: MutableList<PermissionRequest>?,
                     token: PermissionToken?
