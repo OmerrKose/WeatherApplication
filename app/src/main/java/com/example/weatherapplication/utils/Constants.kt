@@ -1,4 +1,4 @@
-package com.example.weatherapplication
+package com.example.weatherapplication.utils
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -6,6 +6,10 @@ import android.net.NetworkCapabilities
 import android.os.Build
 
 object Constants {
+    const val APP_ID: String = "2c50325f427689340a03ff16215d8fc4"
+    const val BASE_URL: String = "https://api.openweathermap.org/data/"
+    const val METRIC_UNIT: String = "metric"
+
     /** This function is to check if the user has internet connection */
     fun isNetworkAvailable(context: Context): Boolean {
         val connectivityManager =
