@@ -3,7 +3,10 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
-        <entry key="app/src/main/res/layout/activity_main.xml" value="0.140625" />
+        <entry key="app/src/main/res/drawable/humidity.xml" value="0.25846153846153846" />
+        <entry key="app/src/main/res/drawable/wind.xml" value="0.25846153846153846" />
+        <entry key="app/src/main/res/layout/activity_main.xml" value="0.25" />
+        <entry key="app/src/main/res/layout/dialog_custom_progress.xml" value="0.25" />
       </map>
     </option>
   </component>

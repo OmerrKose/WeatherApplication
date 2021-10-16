@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Weather Application</string>
+    <string name="please_wait">Please wait&#8230;</string>
+    <string name="image_content_description">image</string>
+    <string name="miles_per_hour">miles/hour</string>
+
+    <string name="humidity_string">%1$s%2$s</string>
 </resources>

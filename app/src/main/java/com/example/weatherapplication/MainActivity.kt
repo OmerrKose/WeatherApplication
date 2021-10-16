@@ -2,6 +2,7 @@ package com.example.weatherapplication
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -29,19 +30,32 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import android.widget.TextView
 
 class MainActivity : AppCompatActivity() {
 
     // This variable is required to gather user location; longitude and latitude
     private lateinit var myFusedLocationClient: FusedLocationProviderClient
+    private var myProgressDialog: Dialog? = null
+
+    private lateinit var textViewMain: TextView
+    private lateinit var textViewMainDescription: TextView
+    private lateinit var textViewHumidityMain: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        initViews()
         myFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         requestPermission()
 
+    }
+
+    /** Function to initialize the view */
+    private fun initViews() {
+        textViewMain = findViewById<TextView>(R.id.textViewMain)
+        textViewMainDescription = findViewById<TextView>(R.id.textViewMainDescription)
+        textViewHumidityMain = findViewById<TextView>(R.id.textViewHumidityMain)
     }
 
     /** This variable is to access user's longitude and latitude values */
@@ -74,13 +88,20 @@ class MainActivity : AppCompatActivity() {
             val listCall: Call<WeatherResponse> =
                 service.getWeather(latitude, longitude, Constants.METRIC_UNIT, Constants.APP_ID)
 
+            showCustomProgressDialog()
+
             listCall.enqueue(object : Callback<WeatherResponse> {
                 override fun onResponse(
                     call: Call<WeatherResponse>,
                     response: Response<WeatherResponse>
                 ) {
                     if (response.isSuccessful) {
+                        hideCustomProgressDialog()
+
                         val weatherList: WeatherResponse? = response.body()
+                        if (weatherList != null) {
+                            setUI(weatherList)
+                        }
                         Log.i("Response Result", "$weatherList")
                     } else {
                         when (response.code()) {
@@ -98,6 +119,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onFailure(call: Call<WeatherResponse>, t: Throwable) {
+                    hideCustomProgressDialog()
                     Log.e("ERROR", t.message.toString())
                 }
 
@@ -200,5 +222,42 @@ class MainActivity : AppCompatActivity() {
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(
             LocationManager.NETWORK_PROVIDER
         )
+    }
+
+    /** This function display the progress dialog bar */
+    private fun showCustomProgressDialog() {
+        myProgressDialog = Dialog(this)
+        myProgressDialog!!.setContentView(R.layout.dialog_custom_progress)
+        myProgressDialog!!.show()
+    }
+
+    /** This function hides the progress dialog bar */
+    private fun hideCustomProgressDialog() {
+        if(myProgressDialog != null) {
+            myProgressDialog!!.dismiss()
+        }
+    }
+
+    /** This function is to set the UI of the application */
+    private fun setUI(weatherList: WeatherResponse) {
+        for (i in weatherList.weather.indices) {
+            Log.i("Weather Name", weatherList.weather.toString())
+
+            textViewMain.text = weatherList.weather[i].main
+            textViewMainDescription.text = weatherList.weather[i].description
+            // Should not add concatenated strings to texts. Instead use a string resource value
+            // and than add strings together
+            textViewHumidityMain.text = getString(R.string.humidity_string, weatherList.main.humidity.toString(), getUnit(application.resources.configuration.toString()))
+        }
+    }
+
+    private fun getUnit(value: String): String {
+        var sign = ""
+        sign = if (value == "US" || value == "LR" || value == "MM") {
+            "°F"
+        } else {
+            "°C"
+        }
+        return sign
     }
 }
