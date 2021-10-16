@@ -9,13 +9,15 @@ import android.content.Intent
 import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import com.example.weatherapplication.models.WeatherResponse
 import com.example.weatherapplication.network.WeatherService
 import com.example.weatherapplication.utils.Constants
@@ -30,7 +32,8 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import android.widget.TextView
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
@@ -41,6 +44,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var textViewMain: TextView
     private lateinit var textViewMainDescription: TextView
     private lateinit var textViewHumidityMain: TextView
+    private lateinit var textViewHumidityDescription: TextView
+    private lateinit var textViewSunriseTime: TextView
+    private lateinit var textViewSunsetTime: TextView
+    private lateinit var textViewMinimumTemperature: TextView
+    private lateinit var textViewMaximumTemperature: TextView
+    private lateinit var textViewWindSpeed: TextView
+    private lateinit var textViewName: TextView
+    private lateinit var textViewCountry: TextView
+    private lateinit var imageViewMain: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,14 +60,22 @@ class MainActivity : AppCompatActivity() {
         initViews()
         myFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         requestPermission()
-
     }
 
     /** Function to initialize the view */
     private fun initViews() {
-        textViewMain = findViewById<TextView>(R.id.textViewMain)
-        textViewMainDescription = findViewById<TextView>(R.id.textViewMainDescription)
-        textViewHumidityMain = findViewById<TextView>(R.id.textViewHumidityMain)
+        textViewMain = findViewById(R.id.textViewMain)
+        textViewMainDescription = findViewById(R.id.textViewMainDescription)
+        textViewHumidityMain = findViewById(R.id.textViewHumidityMain)
+        textViewHumidityDescription = findViewById(R.id.textViewHumidityDescription)
+        textViewSunriseTime = findViewById(R.id.textViewSunrise)
+        textViewSunsetTime = findViewById(R.id.textViewSunset)
+        textViewMinimumTemperature = findViewById(R.id.textViewMin)
+        textViewMaximumTemperature = findViewById(R.id.textViewMax)
+        textViewWindSpeed = findViewById(R.id.textViewWindSpeed)
+        textViewName = findViewById(R.id.textViewLocationName)
+        textViewCountry = findViewById(R.id.textViewLocationCountry)
+        imageViewMain = findViewById(R.id.imageViewMain)
     }
 
     /** This variable is to access user's longitude and latitude values */
@@ -82,7 +102,7 @@ class MainActivity : AppCompatActivity() {
 
             /** Create a service based on the retrofit that is created */
             val service: WeatherService =
-                retrofit.create<WeatherService>(WeatherService::class.java)
+                retrofit.create(WeatherService::class.java)
 
             /** Make a list call with the created service */
             val listCall: Call<WeatherResponse> =
@@ -233,7 +253,7 @@ class MainActivity : AppCompatActivity() {
 
     /** This function hides the progress dialog bar */
     private fun hideCustomProgressDialog() {
-        if(myProgressDialog != null) {
+        if (myProgressDialog != null) {
             myProgressDialog!!.dismiss()
         }
     }
@@ -245,19 +265,66 @@ class MainActivity : AppCompatActivity() {
 
             textViewMain.text = weatherList.weather[i].main
             textViewMainDescription.text = weatherList.weather[i].description
-            // Should not add concatenated strings to texts. Instead use a string resource value
-            // and than add strings together
-            textViewHumidityMain.text = getString(R.string.humidity_string, weatherList.main.humidity.toString(), getUnit(application.resources.configuration.toString()))
+            textViewHumidityMain.text = getString(
+                R.string.humidity_string,
+                weatherList.main.humidity.toString(),
+                getUnit(application.resources.configuration.toString())
+            )
+            textViewHumidityDescription.text = getString(
+                R.string.humidity_description_string,
+                weatherList.main.humidity.toString(),
+                " per cent"
+            )
+            textViewSunriseTime.text = getTime(weatherList.sys.sunrise)
+            textViewSunsetTime.text = getTime(weatherList.sys.sunset)
+            textViewMinimumTemperature.text = getString(
+                R.string.minimum_temperature_string,
+                weatherList.main.temp_min.toString(),
+                " min"
+            )
+            textViewMaximumTemperature.text = getString(
+                R.string.maximum_temperature_string,
+                weatherList.main.temp_max.toString(),
+                " max"
+            )
+            textViewWindSpeed.text = weatherList.wind.speed.toString()
+            textViewName.text = weatherList.name
+            textViewCountry.text = weatherList.sys.country
+
+            when(weatherList.weather[i].icon) {
+                "01d" -> imageViewMain.setImageResource(R.drawable.sunny)
+                "02d" -> imageViewMain.setImageResource(R.drawable.cloud)
+                "03d" -> imageViewMain.setImageResource(R.drawable.cloud)
+                "04d" -> imageViewMain.setImageResource(R.drawable.cloud)
+                "10d" -> imageViewMain.setImageResource(R.drawable.rain)
+                "11d" -> imageViewMain.setImageResource(R.drawable.storm)
+                "13d" -> imageViewMain.setImageResource(R.drawable.snowflake)
+                "01n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                "02n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                "03n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                "04n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                "10n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                "11n" -> imageViewMain.setImageResource(R.drawable.rain)
+                "13n" -> imageViewMain.setImageResource(R.drawable.snowflake)
+            }
         }
     }
 
+    /** Change the unit of the temperature accordingly */
     private fun getUnit(value: String): String {
-        var sign = ""
-        sign = if (value == "US" || value == "LR" || value == "MM") {
+        val sign = if (value == "US" || value == "LR" || value == "MM") {
             "°F"
         } else {
             "°C"
         }
         return sign
+    }
+
+    /** Set the time in HH:mm from the returned JSON object */
+    private fun getTime(time: Long): String? {
+        val date = Date(time * 1000L)
+        val simpleDateFormat = SimpleDateFormat("HH:mm")
+        simpleDateFormat.timeZone = TimeZone.getDefault()
+        return simpleDateFormat.format(date)
     }
 }

@@ -5,4 +5,8 @@
     <string name="miles_per_hour">miles/hour</string>
 
     <string name="humidity_string">%1$s%2$s</string>
+    <string name="humidity_description_string">%1$s%2$s</string>
+
+    <string name="minimum_temperature_string">%1$s%2$s</string>
+    <string name="maximum_temperature_string">%1$s%2$s</string>
 </resources>
