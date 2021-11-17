@@ -7,7 +7,7 @@
     android:background="@color/main_screen_content_background_color"
     android:orientation="vertical"
     android:padding="@dimen/main_content_padding_progress_dialog"
-    tools:context=".MainActivity">
+    tools:context=".activities.MainActivity">
 
     <!-- FIRST ROW -->
     <LinearLayout

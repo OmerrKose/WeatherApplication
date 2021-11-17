@@ -9,6 +9,8 @@ object Constants {
     const val APP_ID: String = "2c50325f427689340a03ff16215d8fc4"
     const val BASE_URL: String = "https://api.openweathermap.org/data/"
     const val METRIC_UNIT: String = "metric"
+    const val PREFERENCE_NAME = "WeatherAppPreference"
+    const val WEATHER_RESPONSE_DATA = "weather_response_data"
 
     /** This function is to check if the user has internet connection */
     fun isNetworkAvailable(context: Context): Boolean {

@@ -9,4 +9,5 @@
 
     <string name="minimum_temperature_string">%1$s%2$s</string>
     <string name="maximum_temperature_string">%1$s%2$s</string>
+    <string name="action_refresh">Refresh</string>
 </resources>

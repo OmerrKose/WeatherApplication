@@ -1,4 +1,4 @@
-package com.example.weatherapplication
+package com.example.weatherapplication.activities
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -6,6 +6,7 @@ import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
@@ -13,15 +14,19 @@ import android.os.Bundle
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.example.weatherapplication.R
 import com.example.weatherapplication.models.WeatherResponse
 import com.example.weatherapplication.network.WeatherService
 import com.example.weatherapplication.utils.Constants
 import com.google.android.gms.location.*
+import com.google.gson.Gson
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
@@ -37,10 +42,9 @@ import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
-    // This variable is required to gather user location; longitude and latitude
-    private lateinit var myFusedLocationClient: FusedLocationProviderClient
     private var myProgressDialog: Dialog? = null
-
+    private lateinit var myFusedLocationClient: FusedLocationProviderClient // This variable is required to gather user location; longitude and latitude
+    private lateinit var mySharedPreferences: SharedPreferences
     private lateinit var textViewMain: TextView
     private lateinit var textViewMainDescription: TextView
     private lateinit var textViewHumidityMain: TextView
@@ -59,7 +63,39 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         initViews()
         myFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        mySharedPreferences = getSharedPreferences(Constants.PREFERENCE_NAME, Context.MODE_PRIVATE)
+        setUI()
         requestPermission()
+    }
+
+    /** Add the refresh button to the menu */
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.menu_main, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    /** When pressed on refresh button in the menu */
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_refresh -> {
+                requestLocationData()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    /** This variable is to access user's longitude and latitude values */
+    private val myLocationCallback = object : LocationCallback() {
+        override fun onLocationResult(locationResult: LocationResult) {
+            val myLastLocation: Location = locationResult.lastLocation
+            val latitude = myLastLocation.latitude
+            val longitude = myLastLocation.longitude
+            Log.i("Current Latitude: ", latitude.toString())
+            Log.i("Current Longitude: ", longitude.toString())
+
+            getLocationWeatherDetails(latitude, longitude)
+        }
     }
 
     /** Function to initialize the view */
@@ -76,19 +112,6 @@ class MainActivity : AppCompatActivity() {
         textViewName = findViewById(R.id.textViewLocationName)
         textViewCountry = findViewById(R.id.textViewLocationCountry)
         imageViewMain = findViewById(R.id.imageViewMain)
-    }
-
-    /** This variable is to access user's longitude and latitude values */
-    private val myLocationCallback = object : LocationCallback() {
-        override fun onLocationResult(locationResult: LocationResult) {
-            val myLastLocation: Location = locationResult.lastLocation
-            val latitude = myLastLocation.latitude
-            val longitude = myLastLocation.longitude
-            Log.i("Current Latitude: ", latitude.toString())
-            Log.i("Current Longitude: ", longitude.toString())
-
-            getLocationWeatherDetails(latitude, longitude)
-        }
     }
 
     /** This function returns the weather details on user's current location */
@@ -118,10 +141,14 @@ class MainActivity : AppCompatActivity() {
                     if (response.isSuccessful) {
                         hideCustomProgressDialog()
 
+                        /** Store the preferences */
                         val weatherList: WeatherResponse? = response.body()
-                        if (weatherList != null) {
-                            setUI(weatherList)
-                        }
+                        val weatherResponseJsonString = Gson().toJson(weatherList)
+                        val editor = mySharedPreferences.edit()
+                        editor.putString(Constants.WEATHER_RESPONSE_DATA, weatherResponseJsonString)
+                        editor.apply()
+
+                        setUI()
                         Log.i("Response Result", "$weatherList")
                     } else {
                         when (response.code()) {
@@ -204,13 +231,14 @@ class MainActivity : AppCompatActivity() {
     /** This function updates the user's location and stores it in the myFusedLocationClient*/
     @SuppressLint("MissingPermission")
     private fun requestLocationData() {
-        val myLocationRequest = LocationRequest()
-        myLocationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        val myLocationRequest = LocationRequest.create().apply{
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
 
         myFusedLocationClient.requestLocationUpdates(
             myLocationRequest,
             myLocationCallback,
-            Looper.myLooper()
+            Looper.myLooper()!!
         )
     }
 
@@ -259,53 +287,61 @@ class MainActivity : AppCompatActivity() {
     }
 
     /** This function is to set the UI of the application */
-    private fun setUI(weatherList: WeatherResponse) {
-        for (i in weatherList.weather.indices) {
-            Log.i("Weather Name", weatherList.weather.toString())
+    private fun setUI() {
+        val weatherResponseToJsonString =
+            mySharedPreferences.getString(Constants.WEATHER_RESPONSE_DATA, "")
 
-            textViewMain.text = weatherList.weather[i].main
-            textViewMainDescription.text = weatherList.weather[i].description
-            textViewHumidityMain.text = getString(
-                R.string.humidity_string,
-                weatherList.main.humidity.toString(),
-                getUnit(application.resources.configuration.toString())
-            )
-            textViewHumidityDescription.text = getString(
-                R.string.humidity_description_string,
-                weatherList.main.humidity.toString(),
-                " per cent"
-            )
-            textViewSunriseTime.text = getTime(weatherList.sys.sunrise)
-            textViewSunsetTime.text = getTime(weatherList.sys.sunset)
-            textViewMinimumTemperature.text = getString(
-                R.string.minimum_temperature_string,
-                weatherList.main.temp_min.toString(),
-                " min"
-            )
-            textViewMaximumTemperature.text = getString(
-                R.string.maximum_temperature_string,
-                weatherList.main.temp_max.toString(),
-                " max"
-            )
-            textViewWindSpeed.text = weatherList.wind.speed.toString()
-            textViewName.text = weatherList.name
-            textViewCountry.text = weatherList.sys.country
+        if (!weatherResponseToJsonString.isNullOrEmpty()) {
+            val weatherList =
+                Gson().fromJson(weatherResponseToJsonString, WeatherResponse::class.java)
 
-            when(weatherList.weather[i].icon) {
-                "01d" -> imageViewMain.setImageResource(R.drawable.sunny)
-                "02d" -> imageViewMain.setImageResource(R.drawable.cloud)
-                "03d" -> imageViewMain.setImageResource(R.drawable.cloud)
-                "04d" -> imageViewMain.setImageResource(R.drawable.cloud)
-                "10d" -> imageViewMain.setImageResource(R.drawable.rain)
-                "11d" -> imageViewMain.setImageResource(R.drawable.storm)
-                "13d" -> imageViewMain.setImageResource(R.drawable.snowflake)
-                "01n" -> imageViewMain.setImageResource(R.drawable.cloud)
-                "02n" -> imageViewMain.setImageResource(R.drawable.cloud)
-                "03n" -> imageViewMain.setImageResource(R.drawable.cloud)
-                "04n" -> imageViewMain.setImageResource(R.drawable.cloud)
-                "10n" -> imageViewMain.setImageResource(R.drawable.cloud)
-                "11n" -> imageViewMain.setImageResource(R.drawable.rain)
-                "13n" -> imageViewMain.setImageResource(R.drawable.snowflake)
+            for (i in weatherList.weather.indices) {
+                Log.i("Weather Name", weatherList.weather.toString())
+
+                textViewMain.text = weatherList.weather[i].main
+                textViewMainDescription.text = weatherList.weather[i].description
+                textViewHumidityMain.text = getString(
+                    R.string.humidity_string,
+                    weatherList.main.humidity.toString(),
+                    getUnit(application.resources.configuration.toString())
+                )
+                textViewHumidityDescription.text = getString(
+                    R.string.humidity_description_string,
+                    weatherList.main.humidity.toString(),
+                    " per cent"
+                )
+                textViewSunriseTime.text = getTime(weatherList.sys.sunrise)
+                textViewSunsetTime.text = getTime(weatherList.sys.sunset)
+                textViewMinimumTemperature.text = getString(
+                    R.string.minimum_temperature_string,
+                    weatherList.main.temp_min.toString(),
+                    " min"
+                )
+                textViewMaximumTemperature.text = getString(
+                    R.string.maximum_temperature_string,
+                    weatherList.main.temp_max.toString(),
+                    " max"
+                )
+                textViewWindSpeed.text = weatherList.wind.speed.toString()
+                textViewName.text = weatherList.name
+                textViewCountry.text = weatherList.sys.country
+
+                when (weatherList.weather[i].icon) {
+                    "01d" -> imageViewMain.setImageResource(R.drawable.sunny)
+                    "02d" -> imageViewMain.setImageResource(R.drawable.cloud)
+                    "03d" -> imageViewMain.setImageResource(R.drawable.cloud)
+                    "04d" -> imageViewMain.setImageResource(R.drawable.cloud)
+                    "10d" -> imageViewMain.setImageResource(R.drawable.rain)
+                    "11d" -> imageViewMain.setImageResource(R.drawable.storm)
+                    "13d" -> imageViewMain.setImageResource(R.drawable.snowflake)
+                    "01n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                    "02n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                    "03n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                    "04n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                    "10n" -> imageViewMain.setImageResource(R.drawable.cloud)
+                    "11n" -> imageViewMain.setImageResource(R.drawable.rain)
+                    "13n" -> imageViewMain.setImageResource(R.drawable.snowflake)
+                }
             }
         }
     }
@@ -323,7 +359,7 @@ class MainActivity : AppCompatActivity() {
     /** Set the time in HH:mm from the returned JSON object */
     private fun getTime(time: Long): String? {
         val date = Date(time * 1000L)
-        val simpleDateFormat = SimpleDateFormat("HH:mm")
+        val simpleDateFormat = SimpleDateFormat("HH:mm", Locale.ENGLISH)
         simpleDateFormat.timeZone = TimeZone.getDefault()
         return simpleDateFormat.format(date)
     }
